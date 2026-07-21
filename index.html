@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scope3 — Every number, traced to its source.</title>
+<meta name="description" content="Scope3 reads sustainability reports and extracts CSRD-aligned metrics automatically, with every figure linked to the exact page and quote it came from.">
+
+<!-- Open Graph / social share preview (LinkedIn, X, Reddit, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Scope3 — Every number, traced to its source.">
+<meta property="og:description" content="Automated CSRD/ESRS metric extraction for ESG consultancies, with page-level citation verification and review flags. Self-hosted. Free 3-day pilot.">
+<meta property="og:image" content="https://placehold.co/1200x630/1B2A2E/EEF0E9?text=Scope3">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Scope3 — Every number, traced to its source.">
+<meta name="twitter:description" content="Automated CSRD/ESRS metric extraction for ESG consultancies, with page-level citation verification and review flags.">
+<meta name="twitter:image" content="https://placehold.co/1200x630/1B2A2E/EEF0E9?text=Scope3">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231B2A2E'/%3E%3Ccircle cx='22' cy='10' r='3' fill='%23E8A73D'/%3E%3Ctext x='6' y='23' font-family='Georgia,serif' font-size='16' font-weight='700' fill='%23EEF0E9'%3ES3%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF0E9;
+    --paper-raised: #F6F7F2;
+    --ink: #1B2A2E;
+    --ink-soft: #4A5B5C;
+    --ink-faint: #7C8B87;
+    --highlight: #E8A73D;
+    --highlight-soft: #F3D9A6;
+    --verified: #2F6B4F;
+    --verified-bg: #E4EEE7;
+    --flag: #B5482F;
+    --flag-bg: #F4E3DC;
+    --line: #D3D6C9;
+    --line-soft: #DFE1D6;
+    --shadow: 0 20px 50px -20px rgba(27, 42, 46, 0.25);
+
+    --display: 'Fraunces', serif;
+    --body: 'IBM Plex Sans', -apple-system, sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  body {
+    font-family: var(--body);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* ---------- Nav ---------- */
+  nav {
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .logo {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .logo::after {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--highlight);
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .nav-cta {
+    font-family: var(--mono);
+    font-size: 13px;
+    text-decoration: none;
+    border: 1px solid var(--ink);
+    padding: 9px 18px;
+    border-radius: 3px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .nav-cta:hover { background: var(--ink); color: var(--paper); }
+
+  /* ---------- Hero ---------- */
+  header.hero {
+    padding: 88px 0 110px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: var(--ink-faint);
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(38px, 5vw, 60px);
+    font-weight: 600;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+    margin-bottom: 26px;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 500;
+    background: linear-gradient(to top, var(--highlight-soft) 38%, transparent 38%);
+    padding: 0 2px;
+  }
+  .hero-sub {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 480px;
+    margin-bottom: 36px;
+  }
+  .hero-ctas {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .btn-primary {
+    font-family: var(--mono);
+    font-size: 14px;
+    text-decoration: none;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 15px 26px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px rgba(27,42,46,0.4); }
+  .btn-secondary {
+    font-family: var(--mono);
+    font-size: 14px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--ink-faint);
+    padding-bottom: 2px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-secondary:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* ---------- Signature: evidence exhibit card ---------- */
+  .exhibit-stage {
+    position: relative;
+    height: 420px;
+  }
+  .exhibit-card {
+    position: absolute;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    width: 340px;
+  }
+  .exhibit-card.primary {
+    top: 10px;
+    left: 20px;
+    transform: rotate(-2.5deg);
+    z-index: 2;
+    animation: settleIn1 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .exhibit-card.secondary {
+    top: 190px;
+    left: 90px;
+    transform: rotate(3deg);
+    z-index: 1;
+    width: 300px;
+    animation: settleIn2 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: 0.12s;
+  }
+  @keyframes settleIn1 {
+    from { opacity: 0; transform: rotate(-2.5deg) translateY(14px); }
+    to { opacity: 1; transform: rotate(-2.5deg) translateY(0); }
+  }
+  @keyframes settleIn2 {
+    from { opacity: 0; transform: rotate(3deg) translateY(14px); }
+    to { opacity: 1; transform: rotate(3deg) translateY(0); }
+  }
+  .exhibit-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 12px;
+  }
+  .exhibit-metric-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .exhibit-value {
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .exhibit-quote {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    background: var(--highlight-soft);
+    padding: 8px 10px;
+    border-radius: 3px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 4px 9px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .badge.page { background: var(--line-soft); color: var(--ink-soft); }
+  .badge.verified { background: var(--verified-bg); color: var(--verified); }
+  .badge.flag { background: var(--flag-bg); color: var(--flag); }
+
+  /* ---------- Sections ---------- */
+  section { padding: 96px 0; }
+  .section-line { border-top: 1px solid var(--line); }
+
+  .section-head {
+    max-width: 620px;
+    margin-bottom: 56px;
+  }
+  .section-eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-family: var(--display);
+    font-size: clamp(28px, 3.4vw, 38px);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 18px;
+  }
+  .section-body {
+    font-size: 16.5px;
+    color: var(--ink-soft);
+    max-width: 560px;
+  }
+
+  /* ---------- Problem section ---------- */
+  .problem-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+  }
+  .problem-copy p {
+    font-size: 17px;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+  }
+  .problem-copy strong { color: var(--ink); font-weight: 600; }
+  .timeline {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    border-left: 2px solid var(--line);
+    padding-left: 22px;
+  }
+  .timeline-item {
+    padding-bottom: 26px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -27px;
+    top: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+  }
+  .timeline-item.final::before { background: var(--verified); }
+  .timeline-item .t-label { color: var(--ink-faint); margin-bottom: 4px; }
+  .timeline-item .t-value { color: var(--ink); font-size: 15px; }
+
+  /* ---------- Exhibits (how it works) ---------- */
+  .exhibits {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .exhibit-panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 32px 28px;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .exhibit-panel.in-view { opacity: 1; transform: translateY(0); }
+  .exhibit-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--highlight);
+    background: rgba(232, 167, 61, 0.12);
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    margin-bottom: 20px;
+  }
+  .exhibit-panel h3 {
+    font-family: var(--display);
+    font-size: 21px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .exhibit-panel p {
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Demo ---------- */
+  .demo-video {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    background: var(--ink);
+    display: block;
+  }
+  .demo-caption {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-top: 16px;
+    text-align: center;
+  }
+
+  /* ---------- Gallery (real screenshots) ---------- */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .gallery-item {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--paper-raised);
+    display: flex;
+    flex-direction: column;
+  }
+  .gallery-item img {
+    width: 100%;
+    display: block;
+    border-bottom: 1px solid var(--line);
+  }
+  .gallery-caption {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    padding: 14px 16px 8px;
+    line-height: 1.5;
+    flex-grow: 1;
+  }
+  .gallery-download {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--highlight);
+    text-decoration: none;
+    padding: 0 16px 16px;
+    display: block;
+  }
+  .gallery-download:hover { text-decoration: underline; }
+  .gallery-note {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: 22px;
+    line-height: 1.6;
+    max-width: 640px;
+  }
+
+  /* ---------- Scope / honesty section ---------- */
+  .scope-list {
+    display: grid;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .scope-item {
+    background: var(--paper-raised);
+    padding: 26px 30px;
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .scope-item .s-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--verified);
+    padding-top: 3px;
+  }
+  .scope-item p { font-size: 15px; color: var(--ink-soft); }
+  .scope-item strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Pricing calculator ---------- */
+  .calc-box {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+  }
+  .calc-inputs { display: flex; flex-direction: column; gap: 24px; }
+  .calc-field label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .calc-field label span.val { color: var(--ink); font-weight: 500; }
+  .calc-field input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    outline: none;
+  }
+  .calc-field input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--highlight);
+    cursor: pointer;
+    border: 3px solid var(--paper-raised);
+    box-shadow: 0 0 0 1px var(--highlight);
+  }
+  .calc-field input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--highlight);
+    cursor: pointer;
+    border: 3px solid var(--paper-raised);
+    box-shadow: 0 0 0 1px var(--highlight);
+  }
+  .calc-note {
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+  }
+  .calc-result {
+    background: var(--ink);
+    border-radius: 6px;
+    padding: 32px;
+    color: var(--paper);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .calc-result-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(238,240,233,0.55);
+    margin-bottom: 10px;
+  }
+  .calc-result-value {
+    font-family: var(--display);
+    font-size: 40px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .calc-result-sub {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: rgba(238,240,233,0.6);
+    margin-bottom: 22px;
+  }
+  .calc-result-price {
+    border-top: 1px solid rgba(238,240,233,0.15);
+    padding-top: 20px;
+  }
+  .calc-result-price .calc-result-label { color: var(--highlight); }
+  .calc-result-price .calc-result-value { font-size: 32px; }
+  .calc-formula {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin-top: 24px;
+    line-height: 1.7;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+  }
+
+  /* ---------- Q&A ---------- */
+  .faq-list {
+    max-width: 760px;
+  }
+  .faq-item {
+    border-bottom: 1px solid var(--line);
+    padding: 26px 0;
+  }
+  .faq-item:first-child { border-top: 1px solid var(--line); }
+  .faq-item summary {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-icon {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+  .faq-item[open] .faq-icon { transform: rotate(45deg); }
+  .faq-answer {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    max-width: 620px;
+    margin-top: 14px;
+    line-height: 1.6;
+  }
+  .faq-answer strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Pilot CTA ---------- */
+  .pilot-section {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 10px;
+    padding: 72px 56px;
+    text-align: center;
+  }
+  .pilot-section h2 { color: var(--paper); }
+  .pilot-section .section-body { color: rgba(238,240,233,0.7); margin: 0 auto 36px; }
+  .pilot-section .btn-primary { background: var(--highlight); color: var(--ink); }
+  .pilot-fine {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: rgba(238,240,233,0.5);
+    margin-top: 22px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer {
+    padding: 48px 0;
+    border-top: 1px solid var(--line);
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer .f-left {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  footer a.f-contact {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .exhibit-stage { height: 320px; margin-top: 20px; }
+    .exhibit-card.primary { left: 0; width: 300px; }
+    .exhibit-card.secondary { left: 40px; top: 170px; width: 260px; }
+    .problem-block { grid-template-columns: 1fr; gap: 40px; }
+    .exhibits { grid-template-columns: 1fr; }
+    .scope-item { grid-template-columns: 1fr; gap: 8px; }
+    .pilot-section { padding: 48px 28px; }
+    .calc-box { grid-template-columns: 1fr; }
+    .gallery { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="logo">Scope3</div>
+    <a class="nav-cta" href="#pilot">Request pilot</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">For ESG &amp; CSRD consultancies</div>
+      <h1>Every number,<br><em>traced</em> to its source.</h1>
+      <p class="hero-sub">Scope3 reads sustainability reports and extracts CSRD-aligned metrics automatically — emissions, energy, workforce, governance — each one linked to the exact page and quote it came from.</p>
+      <div class="hero-ctas">
+        <a class="btn-primary" href="#pilot">Request a 3-day pilot →</a>
+        <a class="btn-secondary" href="#demo">Watch it run</a>
+      </div>
+    </div>
+    <div class="exhibit-stage">
+      <div class="exhibit-card secondary">
+        <div class="exhibit-label">Exhibit — Water Withdrawal</div>
+        <div class="exhibit-metric-name">Water Withdrawal M3</div>
+        <div class="exhibit-value">12,000,000</div>
+        <div class="exhibit-quote">"saving 12 million gallons of water annually"</div>
+        <div class="badge-row">
+          <span class="badge page">Page 7</span>
+          <span class="badge flag">⚠ unit mismatch</span>
+        </div>
+      </div>
+      <div class="exhibit-card primary">
+        <div class="exhibit-label">Exhibit — Scope 1 Emissions</div>
+        <div class="exhibit-metric-name">Scope 1 Emissions tCO2e</div>
+        <div class="exhibit-value">98,000</div>
+        <div class="exhibit-quote">"2023 98,000 65,000 163,000"</div>
+        <div class="badge-row">
+          <span class="badge page">Page 5</span>
+          <span class="badge verified">100% verified</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section-line">
+  <div class="wrap problem-block">
+    <div class="problem-copy">
+      <div class="section-eyebrow">The problem</div>
+      <h2>Right now, someone reads the PDF by hand.</h2>
+      <p>A 40-page sustainability report comes in. An analyst reads it, finds the emissions table, checks the workforce section, copies numbers into a spreadsheet — and if a reviewer later asks <strong>"where did this figure come from,"</strong> the answer is a memory, not a citation.</p>
+      <p>That's not a training problem. It's a <strong>structural</strong> one — manual extraction has no built-in trail back to the source.</p>
+    </div>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="t-label">// without Scope3</div>
+        <div class="t-value">Analyst reads report cover to cover</div>
+      </div>
+      <div class="timeline-item">
+        <div class="t-label">// ~1–2 hours later</div>
+        <div class="t-value">Numbers copied into a spreadsheet, by hand</div>
+      </div>
+      <div class="timeline-item final">
+        <div class="t-label">// audit time</div>
+        <div class="t-value">No record of which page each figure came from</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-line">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">How it works</div>
+      <h2>Three checks, on every figure.</h2>
+      <p class="section-body">Extraction is the easy part. What matters is whether you can trust — and defend — what came out.</p>
+    </div>
+    <div class="exhibits">
+      <div class="exhibit-panel">
+        <div class="exhibit-tag">EXHIBIT A</div>
+        <h3>Extraction</h3>
+        <p>Reads a report and pulls structured metrics across emissions, energy, water, waste, workforce, and governance — 22 CSRD-aligned datapoints in total.</p>
+      </div>
+      <div class="exhibit-panel">
+        <div class="exhibit-tag">EXHIBIT B</div>
+        <h3>Citation verification</h3>
+        <p>Every figure is checked against the exact page it's cited from — not "somewhere in the document," but the specific page the extraction claims.</p>
+      </div>
+      <div class="exhibit-panel">
+        <div class="exhibit-tag">EXHIBIT C</div>
+        <h3>Review flags</h3>
+        <p>Flags the cases a first read often misses — a 2030 target mistaken for a reported actual, or a unit that doesn't match — before they reach your export.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-line" id="demo">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">See it run</div>
+      <h2>A real report, start to finish.</h2>
+      <p class="section-body">No slides. The terminal, the upload, the extraction, the flags, the export — as it actually runs.</p>
+    </div>
+    <video class="demo-video" controls preload="metadata" poster="images/dashboard-acme.jpg">
+      <source src="video/demo.mp4" type="video/mp4">
+      Your browser doesn't support embedded video — <a href="video/demo.mp4">download it here</a> instead.
+    </video>
+    <div class="demo-caption">Full walkthrough — terminal, upload, extraction, review flags, export. Unedited.</div>
+
+    <div class="gallery">
+      <div class="gallery-item">
+        <img src="images/dashboard-acme.jpg" alt="Scope3 dashboard showing extraction results for ACME Corporation — 9 metrics extracted with page citations and a unit-mismatch review flag">
+        <div class="gallery-caption">ACME Corporation — 50-page report, 9 metrics extracted, one unit mismatch caught automatically</div>
+        <a class="gallery-download" href="downloads/ACME_Corporation_ESG_Report.pdf" download>↓ Download this exact source PDF</a>
+      </div>
+      <div class="gallery-item">
+        <img src="images/dashboard-northriver.jpg" alt="Scope3 dashboard showing extraction results for NorthRiver Industrial Components Group">
+        <div class="gallery-caption">NorthRiver Industrial — deliberately messy report (restated figures, missing data), processed in 5.5 seconds</div>
+        <a class="gallery-download" href="downloads/NorthRiver_Industrial_ESG_Report.pdf" download>↓ Download this exact source PDF</a>
+      </div>
+      <div class="gallery-item">
+        <img src="images/dashboard-greentech.jpg" alt="Scope3 dashboard showing extraction results for GreenTech Manufacturing with a forward-looking-language review flag">
+        <div class="gallery-caption">GreenTech Manufacturing — flagged where a target could be mistaken for a reported actual</div>
+        <a class="gallery-download" href="downloads/GreenTech_Manufacturing_ESG_Report.pdf" download>↓ Download this exact source PDF</a>
+      </div>
+    </div>
+    <div class="gallery-note">All three are fictional test reports, built to stress-test extraction on real-world messiness — padded tables, restated figures, forward-looking targets mixed with actuals. Download any of them and see for yourself.</div>
+  </div>
+</section>
+
+<section class="section-line">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Honest scope</div>
+      <h2>Built for the work you already do.</h2>
+    </div>
+    <div class="scope-list">
+      <div class="scope-item">
+        <div class="s-tag">SELF-HOSTED</div>
+        <p><strong>Runs on your own infrastructure.</strong> Client documents never leave your servers — not during a pilot, not ever.</p>
+      </div>
+      <div class="scope-item">
+        <div class="s-tag">SCOPE</div>
+        <p><strong>22 CSRD-aligned datapoints</strong> across climate, workforce, and governance — not the full ESRS taxonomy. Built to speed up the metrics you extract most often, not to replace materiality work.</p>
+      </div>
+      <div class="scope-item">
+        <div class="s-tag">HUMAN IN THE LOOP</div>
+        <p><strong>Every metric is approved, overridden, or rejected by a person</strong> before it's final. Scope3 does the first pass — your team still owns the judgment.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-line">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Pricing</div>
+      <h2>Priced on what the pilot proves, not a number we picked.</h2>
+      <p class="section-body">We don't quote a flat fee cold. The 3-day pilot measures how much manual time it actually saves your team — the license price is set from that, so you can see the math yourself before you pay anything.</p>
+    </div>
+
+    <div class="calc-box">
+      <div class="calc-inputs">
+        <div class="calc-field">
+          <label>Avg. hours saved per day (from your pilot) <span class="val" id="hoursVal">2</span></label>
+          <input type="range" id="hoursSlider" min="0.5" max="6" step="0.5" value="2">
+          <div class="calc-note">What the 3-day pilot measures — manual read-and-copy time avoided, per working day.</div>
+        </div>
+        <div class="calc-field">
+          <label>Work days per month <span class="val" id="daysVal">20</span></label>
+          <input type="range" id="daysSlider" min="15" max="23" step="1" value="20">
+          <div class="calc-note">Typically 20–22 for a full-time team member.</div>
+        </div>
+        <div class="calc-field">
+          <label>Junior consultant hourly rate (€) <span class="val" id="rateVal">25</span></label>
+          <input type="range" id="rateSlider" min="10" max="80" step="5" value="25">
+          <div class="calc-note">Loaded hourly cost of the person currently doing this by hand.</div>
+        </div>
+      </div>
+      <div class="calc-result">
+        <div class="calc-result-label">Annual time value created</div>
+        <div class="calc-result-value" id="annualValue">€12,000</div>
+        <div class="calc-result-sub" id="annualValueSub">2h × 20 days × 12 months × €25</div>
+        <div class="calc-result-price">
+          <div class="calc-result-label">License price — half the value created</div>
+          <div class="calc-result-value" id="priceValue">€6,000<span style="font-size:16px; opacity:0.6;">/yr</span></div>
+        </div>
+      </div>
+      <div class="calc-formula">
+        // annual_value = hours_saved_per_day × work_days_per_month × 12 × hourly_rate<br>
+        // license_price = hours_saved_per_day × work_days_per_month × 12 × (hourly_rate ÷ 2)<br>
+        // The license is always priced at exactly half the value it creates — you keep the other half as net savings. Move the sliders to your own pilot numbers once it's done.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-line">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Questions</div>
+      <h2>What consultants ask before piloting.</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Does our client data ever reach your servers?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">No. Scope3 is <strong>self-hosted</strong> — it runs entirely on your own infrastructure, including during the pilot. Documents are read, processed, and stored on your side only. We never see them.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What happens after the 3-day pilot?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">Nothing, automatically. The pilot license simply expires on its own. If it was useful, we talk about an annual license from there — no auto-renewal, no surprise charge, no obligation either way.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What if the extraction gets something wrong?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">That's what the verification and review-flag layers are for. Every figure is checked against its cited source page, and anything ambiguous — a target that could be mistaken for an actual, a unit that doesn't match — gets flagged for a person to review. <strong>Nothing is finalized without a human approving it.</strong></div>
+      </details>
+      <details class="faq-item">
+        <summary>Does this replace our review process?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">No — it speeds up the first pass, not the judgment call. Your team still approves, overrides, or rejects every metric before it's used. Scope3 removes the manual reading and copying, not the review.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Which CSRD/ESRS datapoints does it cover?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">22 datapoints across climate (Scope 1/2/3 emissions, energy, water, waste), workforce (turnover, training, pay gap, safety), and governance (board composition, ethics, corruption). That's not the full ESRS taxonomy — it's the set of metrics that come up most often in practice. Happy to talk through what's not covered before you pilot.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Do we need a technical team to run this?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">You need someone comfortable running a Docker container — not a dev team. Setup is a handful of commands, documented step by step, and we're happy to walk through it live for the pilot.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What does it cost after the pilot?<span class="faq-icon">+</span></summary>
+        <div class="faq-answer">An annual self-hosted license, priced to fit how many client engagements you run through it. We'd rather quote you a number based on what the pilot actually showed than guess at one cold — that conversation happens after, not before.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section id="pilot">
+  <div class="wrap">
+    <div class="pilot-section">
+      <h2>Try it on your own reports.<br>Free, for three days.</h2>
+      <p class="section-body">Run it against a real or anonymized client report and see exactly what it extracts — before any conversation about cost.</p>
+      <a class="btn-primary" href="mailto:youssefjamoudi43@gmail.com?subject=Pilot%20request%20—%20Scope3&body=Hi%2C%0A%0AI'd%20like%20to%20try%20the%203-day%20pilot.%20A%20bit%20about%20our%20firm%3A%0A%0A">Request a 3-day pilot →</a>
+      <div class="pilot-fine">No setup obligation. No pressure. Just the results, on your own documents.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="f-left">Scope3 — independently built and tested.</div>
+    <a class="f-contact" href="mailto:youssefjamoudi43@gmail.com">youssefjamoudi43@gmail.com</a>
+  </div>
+</footer>
+
+<script>
+  const panels = document.querySelectorAll('.exhibit-panel');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+      }
+    });
+  }, { threshold: 0.15 });
+  panels.forEach(p => observer.observe(p));
+
+  // Pricing calculator
+  const hoursSlider = document.getElementById('hoursSlider');
+  const daysSlider = document.getElementById('daysSlider');
+  const rateSlider = document.getElementById('rateSlider');
+  const hoursVal = document.getElementById('hoursVal');
+  const daysVal = document.getElementById('daysVal');
+  const rateVal = document.getElementById('rateVal');
+  const annualValue = document.getElementById('annualValue');
+  const annualValueSub = document.getElementById('annualValueSub');
+  const priceValue = document.getElementById('priceValue');
+
+  const eur = (n) => '€' + Math.round(n).toLocaleString('en-US');
+
+  function recalc() {
+    const hours = parseFloat(hoursSlider.value);
+    const days = parseFloat(daysSlider.value);
+    const rate = parseFloat(rateSlider.value);
+
+    hoursVal.textContent = hours;
+    daysVal.textContent = days;
+    rateVal.textContent = rate;
+
+    // annual_value = hours_saved_per_day × work_days_per_month × 12 × hourly_rate
+    const value = hours * days * 12 * rate;
+    // license_price = same formula, but at HALF the hourly rate —
+    // guarantees price is always exactly half of value, by construction.
+    const price = value / 2;
+
+    annualValue.textContent = eur(value);
+    annualValueSub.textContent = `${hours}h × ${days} days × 12 months × €${rate}`;
+    priceValue.innerHTML = eur(price) + '<span style="font-size:16px; opacity:0.6;">/yr</span>';
+  }
+
+  [hoursSlider, daysSlider, rateSlider].forEach(el => el.addEventListener('input', recalc));
+  recalc();
+</script>
+
+</body>
+</html>
